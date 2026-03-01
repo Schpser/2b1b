@@ -1,0 +1,327 @@
+---
+title: Yaḥḍuru — Diagramme de classes
+---
+classDiagram
+
+    %% ─── UTILISATEURS & RÔLES ────────────────────────────────────────────────
+
+    class User {
+        +UUID id
+        +String email
+        +String passwordHash
+        +RoleEnum role
+        +Boolean isActive
+        +DateTime createdAt
+        +DateTime lastLoginAt
+        +login() Boolean
+        +logout() void
+        +changePassword(newHash) void
+    }
+
+    class RoleEnum {
+        <<enumeration>>
+        PRACTITIONER
+        HUB_SUPERVISOR
+        INSTITUTION
+        ADMIN
+    }
+
+    class PractitionerProfile {
+        +UUID id
+        +UUID userId
+        +UUID hubId
+        +String speciality
+        +Float coverageRadiusKm
+        +String[] languages
+        +CertificationLevel certLevel
+        +PingStatus pingStatus
+        +Point locationEncrypted
+        +DateTime pingStatusUpdatedAt
+        +activatePing() void
+        +deactivatePing() void
+        +setBusy() void
+        +getDistanceTo(point) Float
+    }
+
+    class CertificationLevel {
+        <<enumeration>>
+        NONE
+        BASE
+        ADVANCED
+    }
+
+    class PingStatus {
+        <<enumeration>>
+        ACTIVE
+        INACTIVE
+        BUSY
+    }
+
+    class HubSupervisor {
+        +UUID id
+        +UUID userId
+        +UUID hubId
+        +String role
+        +triggerPing(pingEventId) void
+        +validatePractitioner(practitionerId) void
+        +closeReferral(referralId, status) void
+        +anonymiseAndExport() InterventionAggregate
+    }
+
+    class Institution {
+        +UUID id
+        +UUID userId
+        +String name
+        +String type
+        +Point location
+        +String contactEmail
+        +receiveReferral(referralId) void
+        +publishProtocol(protocol) void
+    }
+
+    %% ─── HUB ─────────────────────────────────────────────────────────────────
+
+    class Hub {
+        +UUID id
+        +String name
+        +String type
+        +Polygon coverageZone
+        +String contactEmail
+        +String contactPhone
+        +Boolean isActive
+        +getPractitioners() PractitionerProfile[]
+        +getActivePing() PingEvent[]
+        +getSupervisors() HubSupervisor[]
+    }
+
+    class HubTypeEnum {
+        <<enumeration>>
+        ASSOCIATION
+        COOPERATIVE
+        NGO
+        COMMUNITY_GROUP
+    }
+
+    %% ─── FORMATION & CERTIFICATION ───────────────────────────────────────────
+
+    class TrainingModule {
+        +UUID id
+        +String titleFr
+        +String titleAr
+        +String contentOfflineRef
+        +ModuleCategory category
+        +Integer passingScore
+        +Boolean isOfflineAvailable
+        +Boolean isActive
+        +getQuestions() Question[]
+    }
+
+    class ModuleCategory {
+        <<enumeration>>
+        ANATOMY_PHYSIOLOGY
+        DANGER_SIGNS
+        HYGIENE_PREVENTION
+        TCIM_SCOPE_LIMITS
+        EMERGENCY_REFERRAL
+        CONSENT_DOCUMENTATION
+    }
+
+    class Question {
+        +UUID id
+        +UUID moduleId
+        +String textFr
+        +String textAr
+        +String[] options
+        +Integer correctIndex
+    }
+
+    class ModuleCompletion {
+        +UUID id
+        +UUID practitionerId
+        +UUID moduleId
+        +Integer score
+        +Boolean passed
+        +DateTime completedAt
+        +Integer attemptCount
+    }
+
+    class Certification {
+        +UUID id
+        +UUID practitionerId
+        +CertificationLevel level
+        +DateTime issuedAt
+        +UUID validatedByHubId
+        +Boolean isValid
+        +revoke(reason) void
+    }
+
+    %% ─── PING ────────────────────────────────────────────────────────────────
+
+    class PingEvent {
+        +UUID id
+        +UUID hubId
+        +UUID triggeredByUserId
+        +PingTriggerSource source
+        +AlertType alertType
+        +Point obfuscatedZone
+        +PingEventStatus status
+        +DateTime triggeredAt
+        +DateTime resolvedAt
+        +String resolutionNote
+        +dispatch() PingResponse[]
+        +escalate() Referral
+        +close(status, note) void
+    }
+
+    class PingTriggerSource {
+        <<enumeration>>
+        HUB_SUPERVISOR
+        PRACTITIONER_SELF
+        COMMUNITY
+    }
+
+    class AlertType {
+        <<enumeration>>
+        NEAR_URGENCY
+        OBSTETRIC
+        CHRONIC_EPISODE
+        EARLY_DETECTION
+        PRACTITIONER_ESCALATION
+    }
+
+    class PingEventStatus {
+        <<enumeration>>
+        DISPATCHED
+        RESPONDING
+        RESOLVED
+        ESCALATED
+        EXPIRED
+    }
+
+    class PingResponse {
+        +UUID id
+        +UUID pingEventId
+        +UUID practitionerId
+        +PingResponseType response
+        +Integer etaMinutes
+        +DateTime respondedAt
+        +DateTime notifiedAt
+    }
+
+    class PingResponseType {
+        <<enumeration>>
+        ATTENDING
+        UNAVAILABLE
+        ESCALATING
+    }
+
+    %% ─── SIGNALEMENT & RÉFÉRENCE ─────────────────────────────────────────────
+
+    class Referral {
+        +UUID id
+        +UUID hubId
+        +UUID institutionId
+        +UUID practitionerId
+        +String anonymisedPatientRef
+        +String sexCategory
+        +String ageGroup
+        +String symptomsGeneral
+        +Point approximateLocation
+        +ReferralStatus status
+        +String practitionerNote
+        +DateTime createdAt
+        +DateTime updatedAt
+        +updateStatus(status) void
+    }
+
+    class ReferralStatus {
+        <<enumeration>>
+        PENDING
+        RECEIVED
+        IN_CARE
+        CLOSED
+        CANCELLED
+    }
+
+    %% ─── DONNÉES AGRÉGÉES ────────────────────────────────────────────────────
+
+    class InterventionAggregate {
+        +UUID id
+        +UUID hubId
+        +String periodMonth
+        +Integer totalPings
+        +Integer totalResolved
+        +Integer totalEscalated
+        +Integer totalReferrals
+        +Integer activePractitioners
+        +JSON symptomDistribution
+        +JSON zoneActivityHeatmap
+        +DateTime generatedAt
+    }
+
+    %% ─── PROTOCOLE ───────────────────────────────────────────────────────────
+
+    class CareProtocol {
+        +UUID id
+        +UUID institutionId
+        +String titleFr
+        +String titleAr
+        +String[] targetSpecialities
+        +String contentRef
+        +DateTime publishedAt
+        +Boolean isActive
+    }
+
+    %% ─── AUDIT ───────────────────────────────────────────────────────────────
+
+    class AuditLog {
+        +UUID id
+        +UUID actorUserId
+        +String action
+        +String entityType
+        +UUID entityId
+        +JSON metadata
+        +DateTime timestamp
+        +String ipHash
+    }
+
+    %% ─── RELATIONS ───────────────────────────────────────────────────────────
+
+    User "1" --> "1" RoleEnum : has role
+    User "1" --> "0..1" PractitionerProfile : has profile
+    User "1" --> "0..1" HubSupervisor : has profile
+    User "1" --> "0..1" Institution : has profile
+
+    PractitionerProfile "1" --> "1" CertificationLevel : has level
+    PractitionerProfile "1" --> "1" PingStatus : has status
+    PractitionerProfile "many" --> "1" Hub : belongs to
+    PractitionerProfile "1" --> "many" ModuleCompletion : has completions
+    PractitionerProfile "1" --> "0..1" Certification : holds
+    PractitionerProfile "1" --> "many" PingResponse : responds to pings
+    PractitionerProfile "1" --> "many" Referral : initiates
+
+    Hub "1" --> "1" HubTypeEnum : is of type
+    Hub "1" --> "many" HubSupervisor : managed by
+    Hub "1" --> "many" PingEvent : coordinates
+    Hub "1" --> "many" Referral : relays
+    Hub "1" --> "many" InterventionAggregate : generates
+
+    TrainingModule "1" --> "1" ModuleCategory : belongs to
+    TrainingModule "1" --> "many" Question : contains
+    ModuleCompletion "many" --> "1" TrainingModule : completes
+    Certification "many" --> "1" Hub : validated by
+
+    PingEvent "1" --> "1" PingTriggerSource : triggered by
+    PingEvent "1" --> "1" AlertType : of type
+    PingEvent "1" --> "1" PingEventStatus : has status
+    PingEvent "1" --> "many" PingResponse : generates
+    PingEvent "0..1" --> "0..1" Referral : may escalate to
+
+    PingResponse "1" --> "1" PingResponseType : of type
+
+    Referral "1" --> "1" ReferralStatus : has status
+    Referral "many" --> "1" Institution : directed to
+
+    Institution "1" --> "many" CareProtocol : publishes
+
+    AuditLog "many" --> "1" User : logged for
